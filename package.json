@@ -1,7 +1,7 @@
 {
-  "name": "node-js-getting-started",
-  "version": "0.2.5",
-  "description": "A sample Node.js app using Express 4",
+  "name": "something-changed",
+  "version": "0.1.1",
+  "description": "A heroku app to tell you when something changed",
   "engines": {
     "node": "5.9.1"
   },
@@ -10,12 +10,16 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "cheerio": "^0.22.0",
     "ejs": "2.4.1",
-    "express": "4.13.3"
+    "express": "4.13.3",
+    "redis": "^2.6.2",
+    "request": "^2.76.0",
+    "trim": "0.0.1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/heroku/node-js-getting-started"
+    "url": "https://github.com/mcgrue/something-changed"
   },
   "keywords": [
     "node",
