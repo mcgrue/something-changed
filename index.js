@@ -78,7 +78,8 @@ app.get('/new', function (req, resp) {
         "selector": q.selector,
         "notify_url": q.notify_url,
         "last_content": contents,
-        "last_timestamp": new Date().getTime()
+        "last_checked_timestamp": new Date().getTime(),
+        "last_updated_timestamp": new Date().getTime()
       };
 
       // todo: check if that entry already existed maybe?
@@ -129,6 +130,91 @@ app.get('/check', function (req, resp) {
   });
 });
 
+var superlog = function(msg, results) {
+  console.log(msg);
+  if(results) results.push(msg);
+}
+
+var notify_webhook = function( url, webhookMsg ) {
+
+  request.post({
+    url:url,
+    form: webhookMsg
+  }, function(err,httpResponse,body) {
+    if( err ) {
+      console.error( "Error attempting to notify " + url + "of new changes to the source data." );
+      console.error( pretty(webhookMsg) );
+
+      /// TODO: retry queue?
+    }
+  });
+};
+
+var _inner_do_website = function(sel, website, results, $ ) {
+
+  var first = $($(sel)[0])
+  var contents = first && trim(first.text());
+
+  superlog("attempting selector " + sel, results);
+
+  if( !contents ) {
+    superlog("...but the selector had no contents..", results);
+    return;
+  }
+
+  client.hgetall(make_key(website, sel), function(err, cachedObj) {
+    if( cachedObj.last_content != contents ) {
+      var webhookMsg = Object.assign({}, cachedObj);
+      webhookMsg["old_content"] = webhookMsg["last_content"];
+      webhookMsg["old_content_fetch_time"] = webhookMsg["last_updated_timestamp"];
+      webhookMsg["new_content"] = contents;
+      webhookMsg["new_content_fetch_time"] = new Date().getTime();
+
+      delete webhookMsg["last_content"];
+      delete webhookMsg["last_checked_timestamp"];
+      delete webhookMsg["last_updated_timestamp"];
+
+      /// DO SEND
+      notify_webhook( webhookMsg["notify_url"], webhookMsg );
+
+      /// UPDATE MEMBER
+      cachedObj["last_checked_timestamp"] = new Date().getTime();
+      cachedObj["last_updated_timestamp"] = new Date().getTime();
+      cachedObj["last_content"] = contents;
+      client.hmset(make_key(website, sel), cachedObj);
+
+      superlog("new content found and webhook notified!", results);
+
+    } else {
+      cachedObj["last_checked_timestamp"] = new Date().getTime();
+      client.hmset(make_key(website, sel), cachedObj);
+
+      superlog("no new content found.  updating timestamp.", results);
+    }
+  });
+}
+
+var do_website = function( website, selector_list ) {
+
+  var results = [];
+
+  request(website, function(error, response, html) {
+    if(!error) {
+
+      superlog(website + " successfully fetched.", results);
+
+      var $ = cheerio.load(html);
+
+      for (var i = selector_list.length - 1; i >= 0; i--) {
+        _inner_do_website(selector_list[i], website, results, $ );
+      }
+    } else {
+      superlog("failed to fetch "+website+": " + error, results);
+    }
+  });
+
+  return results;
+};
 
 app.get('/checkall', function(req, resp) {
   client.keys('*', function (err, keys) {
@@ -156,8 +242,15 @@ app.get('/checkall', function(req, resp) {
       }
     }
 
-    resp.send("<pre>" + pretty(dict));
+    var results = [];
+    tmp = "";
 
+    for( var website in dict ) {
+      tmp = do_website( website, dict[website] );
+      results.push( [website, tmp] );
+    }
+
+    resp.send("<pre>" + pretty(results));
   });
 });
 
