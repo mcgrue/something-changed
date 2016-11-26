@@ -2,11 +2,16 @@ var express = require('express');
 var app = express();
 var request = require('request');
 var redis = require('redis');
-var client = redis.createClient(); //creates a new client
 var cheerio = require('cheerio');
 var trim = require('trim');
 var pretty = require('js-object-pretty-print').pretty, address, value;
 var pr2 = JSON.stringify;
+// var Promise = require("bluebird");
+
+// Promise.promisifyAll(redis.RedisClient.prototype);
+// Promise.promisifyAll(redis.Multi.prototype);
+
+var client = redis.createClient(); //creates a new client
 
 app.set('port', (process.env.PORT || 5000));
 
@@ -34,7 +39,11 @@ var data = {
   "selector": "#stream-items-id > li:nth-child(2) p.js-tweet-text"
 };
 
-var make_key = function(url, selector) {
+var make_key = function(url, selector, json) {
+  if( !selector && json ) {
+    selector = "JSON";
+  }
+
   if( !url || !selector ) {
     throw "missing required parameter, either url or selector.";
   }
@@ -52,8 +61,8 @@ app.get('/new', function (req, resp) {
     return;
   }
 
-  if( !q.selector ) {
-    resp.send("Missing required parameters: selector");
+  if( !q.selector && !q.json ) {
+    resp.send("Missing required parameters: selector or json");
     return;
   }
 
@@ -64,9 +73,16 @@ app.get('/new', function (req, resp) {
 
   request(q.url, function(error, response, html) {
     if(!error){
-      var $ = cheerio.load(html);
-      var first = $($(q.selector)[0])
-      var contents = first && trim(first.text());
+      var contents = "";
+
+      if( q.json ) {
+        /// TODO : check mime-type json?
+        contents = JSON.parse(html);
+      } else {
+        var $ = cheerio.load(html);
+        var first = $($(q.selector)[0])
+        contents = first && trim(first.text());
+      }
 
       if( !contents ) {
         resp.send("url and selector got a result, but the selector had no contents. Aborting.");
@@ -75,16 +91,22 @@ app.get('/new', function (req, resp) {
 
       var hash = {
         "url": q.url,
-        "selector": q.selector,
         "notify_url": q.notify_url,
         "last_content": contents,
         "last_checked_timestamp": new Date().getTime(),
         "last_updated_timestamp": new Date().getTime()
       };
 
+      if(q.selector) {
+        hash["selector"] = q.selector;
+      }
+      else if(q.json) {
+        hash["json"] = true;
+      }
+
       // todo: check if that entry already existed maybe?
 
-      client.hmset(make_key(q.url, q.selector), hash);
+      client.hmset(make_key(q.url, q.selector, q.json), hash);
 
       resp.send("Created new thing.<br><pre>" + pretty(hash) + "</pre>");
     } else {
@@ -132,7 +154,7 @@ app.get('/check', function (req, resp) {
 
 var superlog = function(msg, results) {
   console.log(msg);
-  if(results) results.push(msg);
+  if(results) results.push(msg); /// TODO: not working as intended due to async code.  Promisification in the future?
 }
 
 var notify_webhook = function( url, webhookMsg ) {
@@ -150,10 +172,16 @@ var notify_webhook = function( url, webhookMsg ) {
   });
 };
 
-var _inner_do_website = function(sel, website, results, $ ) {
+var _inner_do_website = function(sel, website, results, $, html ) {
 
-  var first = $($(sel)[0])
-  var contents = first && trim(first.text());
+  var contents = "";
+
+  if( sel === "JSON" ) {
+    contents = JSON.parse(html);
+  } else {
+    var first = $($(sel)[0])
+    contents = first && trim(first.text());
+  }
 
   superlog("attempting selector " + sel, results);
 
@@ -206,7 +234,7 @@ var do_website = function( website, selector_list ) {
       var $ = cheerio.load(html);
 
       for (var i = selector_list.length - 1; i >= 0; i--) {
-        _inner_do_website(selector_list[i], website, results, $ );
+        _inner_do_website(selector_list[i], website, results, $, html );
       }
     } else {
       superlog("failed to fetch "+website+": " + error, results);
@@ -247,7 +275,7 @@ app.get('/checkall', function(req, resp) {
 
     for( var website in dict ) {
       tmp = do_website( website, dict[website] );
-      results.push( [website, tmp] );
+      results.push( [website] );
     }
 
     resp.send("<pre>" + pretty(results));
