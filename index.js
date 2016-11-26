@@ -30,6 +30,23 @@ app.get('/htmlnew', function(request, response) {
   response.render('pages/new');
 });
 
+app.get('/htmledit', (request, response) => {
+
+  var q = request.query;
+
+  if( !q.url ) {
+    request.send("Missing required parameters: url");
+    return;
+  }
+
+  if( !q.selector ) {
+    request.send("Missing required parameters: selector or json");
+    return;
+  }
+
+  response.render('pages/edit', {url: q.url, selector: q.selector});
+});
+
 app.get('/htmllist', function(request, response) {
 
   client.keys('*', function (err, keys) {
@@ -173,7 +190,8 @@ app.get('/check', function (req, resp) {
     if(err) {
       resp.send("ERROR: " + err);
     } else {
-      resp.send("REPLY: <pre>" + pretty(reply) + "</pre>");
+      resp.type('json');
+      resp.jsonp(reply);
     }
   });
 });

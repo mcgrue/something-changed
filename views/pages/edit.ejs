@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <% include ../partials/header.ejs %>
+  <script src="/static/js/clipboard.min.js"></script>
+</head>
+
+<body>
+
+<% include ../partials/nav.ejs %>
+
+<div class="container">
+<h2>Update this Something Changed <!--<button id=dbugger>fill debug</button>--></h2>
+
+<form>
+  <fieldset>
+    <div class="form-group error">
+      <label for="url">URL</label>
+      <input type="text" id="url" class="form-control" placeholder="http://google.com">
+    </div>
+  </fieldset>
+
+  <div class="checkbox">
+    <label>
+      <input type="checkbox" id="isJSON"> Is JSON
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label for="cssSelector">CSS Selector</label>
+    <input type="text" class="form-control" id="cssSelector" placeholder="#foo div.bar:nth-child(17)">
+  </div>
+
+  <div class="form-group">
+    <label for="notifyUrl">Notification URL (webhook) (expecting a POST)</label>
+    <input type="text" class="form-control" id="notifyUrl" placeholder="http://gruniverse.com/">
+  </div>
+
+  <div class="form-group">
+    <button id="submit">Update this Something Changed</button>
+  </div>
+
+  <div class="form-group">
+    <label for="lastResponse">
+      Last response
+      <em class="copy-BTN" id="lastResponseCopyButton">
+        <span
+          data-clipboard-target="#lastResponse"
+          class="glyphicon glyphicon-copy"></span>
+      </em>
+      <span style="display: none; color: red;" id="contentCopied"> content copied! </span>
+    </label>
+
+    <pre id="lastResponse" data-clipboard-action="copy" style="background-color: #eee;"></pre>
+  </div>
+
+  <div class="form-group">
+    <label for="lastFetched">Time last fetched</label>
+    <input type="text" class="form-control" id="lastFetched" disabled="true">
+  </div>
+
+  <div class="form-group">
+    <label for="lastChanged">Time last changed</label>
+    <input type="text" class="form-control" id="lastChanged" disabled="true">
+  </div>
+
+</form>
+
+<script>
+
+  var originalUrl = "";
+  var originalSelector = "";
+
+  ////
+  //// Initialization
+  ////
+  $.ajax({
+    async: false,
+    url: "/check",
+    data: {
+      url: "<%= url %>",
+      selector: "<%= selector %>",
+    },
+    method: "GET",
+    success: (data) => {
+      var newDate = new Date();
+      newDate.setTime(data.last_checked_timestamp);
+      dateString = newDate.toUTCString();
+
+      $("#lastResponse").text(data.last_content);
+      $("#lastFetched").val(data.last_checked_timestamp + "  ("+dateString+")");
+
+      newDate.setTime(data.last_updated_timestamp);
+      dateString = newDate.toUTCString();
+
+      $("#lastChanged").val(data.last_updated_timestamp + "  ("+dateString+")");
+
+      $("#url").val(data.url);
+      originalUrl = data.url;
+      $("#cssSelector").val(data.selector);
+      originalSelector = data.selector;
+      $("#notifyUrl").val(data.notify_url);
+
+      $("#isJSON").prop('checked', data.json);
+    },
+    error: (a,b,c) => {
+      alert("Error fetching data.  Womp womp.");
+    },
+  });
+
+  ////
+  //// Clipboard stuff
+  ////
+  var showCopied = () => {
+    $("#contentCopied").fadeIn().fadeOut().fadeIn().fadeOut().fadeIn().fadeOut();
+  };
+
+  var clipboard = new Clipboard('#lastResponse', {
+    target: function(trigger) {
+      console.log("target");
+      return trigger;
+    },
+    text: function(trigger) {
+      console.log("text");
+      return $('#lastResponse').text();
+    }
+  });
+
+  var clipboard2 = new Clipboard('#lastResponseCopyButton', {
+    text: function(trigger) {
+      console.log("text");
+      return $('#lastResponse').text();
+    }
+  });
+
+  clipboard.on('success', function(e) {
+    console.info('Action:', e.action);
+    console.info('Text:', e.text);
+    console.info('Trigger:', e.trigger);
+
+    e.clearSelection();
+    showCopied();
+  });
+
+  clipboard2.on('success', function(e) {
+    console.info('Action:', e.action);
+    console.info('Text:', e.text);
+    console.info('Trigger:', e.trigger);
+
+    e.clearSelection();
+    showCopied();
+  });
+
+
+$("#isJSON").click( (e) => {
+  $("#cssSelector").prop('disabled', $(e.target).is(':checked') );
+} );
+
+$("#submit").click( (e) => {
+  e.preventDefault();
+
+  $(".has-error").removeClass("has-error");
+
+  if( !$("#url").val() ) {
+    $("#url").closest(".form-group").addClass("has-error");
+  }
+
+  if( !$("#notifyUrl").val() ) {
+    $("#notifyUrl").closest(".form-group").addClass("has-error");
+  }
+
+  if( !$("#cssSelector").val() && !$("#cssSelector").prop('disabled') ) {
+    $("#cssSelector").closest(".form-group").addClass("has-error");
+  }
+
+  if( !$(".has-error").length ) {
+    var data = {
+      "url": encodeURI($("#url").val()).replace(/#/g, "%23"),
+      "notify_url": encodeURI($("#notifyUrl").val()).replace(/#/g, "%23"),
+    }
+
+    if( $("#cssSelector").val() ) {
+      data.selector = encodeURI($("#cssSelector").val()).replace(/#/g, "%23");
+    } else {
+      data.json = true;
+    }
+
+    if( true || data.url != originalUrl || data.selector != originalSelector ) {
+      $.ajax({
+        url: "/delete",
+        data: {
+          'url': originalUrl,
+          'selector': originalSelector
+        },
+        method: "GET",
+        async: false,
+        success: () => {
+          console.log("Successfully deleted old junk.");
+        },
+        error: () => {
+          console.log("Failed to delete old junk.");
+        }
+      });
+
+      $.ajax({
+        url: "/new",
+        data: data,
+        method: "GET",
+        success: (a,b,c) => {
+          window.location = "/htmllist";
+        },
+        error: (a,b) => {
+          alert("error!");
+        }
+      });
+    } else {
+      return false;
+    }
+  }
+});
+
+</script>
+
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel">Modal title</h4>
+      </div>
+      <div class="modal-body">
+        ...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
