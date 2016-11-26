@@ -1,17 +1,26 @@
 var express = require('express');
 var app = express();
 var request = require('request');
-var redis = require('redis');
+
+if (process.env.REDISTOGO_URL) {
+  var rtg   = require("url").parse(process.env.REDISTOGO_URL);
+  var redis = require("redis").createClient(rtg.port, rtg.hostname);
+
+  redis.auth(rtg.auth.split(":")[1]);
+} else {
+  var redis = require("redis").createClient();
+}
+
+var client = redis.createClient(); //creates a new client
 var cheerio = require('cheerio');
 var trim = require('trim');
 var pretty = require('js-object-pretty-print').pretty, address, value;
 var pr2 = JSON.stringify;
-// var Promise = require("bluebird");
 
+// var Promise = require("bluebird");
 // Promise.promisifyAll(redis.RedisClient.prototype);
 // Promise.promisifyAll(redis.Multi.prototype);
 
-var client = redis.createClient(); //creates a new client
 
 app.set('port', (process.env.PORT || 5000));
 
