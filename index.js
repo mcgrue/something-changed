@@ -20,9 +20,35 @@ app.use(express.static(__dirname + '/public'));
 // views is directory for all template files
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
+app.use('/static', express.static('public'))
 
 app.get('/', function(request, response) {
   response.render('pages/index');
+});
+
+app.get('/htmlnew', function(request, response) {
+  response.render('pages/new');
+});
+
+app.get('/htmllist', function(request, response) {
+
+  client.keys('*', function (err, keys) {
+    if (err) {
+      resp.send(err);
+      return;
+    }
+
+    keys.sort();
+
+    keys = keys.map( (val) => {
+      var a = val.split(";;;");
+      return {url:a[0], selector:a[1], key:val};
+    } );
+
+    response.render('pages/list', {results:keys, filter:(inp) => {
+      return encodeURI(inp).replace(/#/g, "%23");
+    }});
+  });
 });
 
 app.listen(app.get('port'), function() {

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <% include ../partials/header.ejs %>
+</head>
+
+<body>
+
+<% include ../partials/nav.ejs %>
+
+<div class="container">
+<h2>Add new Something Changed <!--<button id=dbugger>fill debug</button>--></h2>
+
+<form>
+  <fieldset>
+    <div class="form-group error">
+      <label for="url">URL</label>
+      <input type="text" id="url" class="form-control" placeholder="http://google.com">
+    </div>
+  </fieldset>
+
+  <div class="checkbox">
+    <label>
+      <input type="checkbox" id="isJSON"> Is JSON
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label for="cssSelector">CSS Selector</label>
+    <input type="text" class="form-control" id="cssSelector" placeholder="#foo div.bar:nth-child(17)">
+  </div>
+
+  <div class="form-group">
+    <label for="notifyUrl">Notification URL (webhook) (expecting a POST)</label>
+    <input type="text" class="form-control" id="notifyUrl" placeholder="http://gruniverse.com/">
+  </div>
+
+  <div class="form-group">
+    <button id="submit">Add new Something Changed</button>
+  </div>
+
+</form>
+
+<script>
+$("#isJSON").click( (e) => {
+  $("#cssSelector").prop('disabled', $(e.target).is(':checked') );
+} );
+
+$("#dbugger").click( () => {
+  $("#url").val("http://google.com");
+  $("#cssSelector").val("body");
+  $("#notifyUrl").val("http://requestb.in/1c97nax1");
+} );
+
+$("#submit").click( (e) => {
+
+  $(".has-error").removeClass("has-error");
+
+  if( !$("#url").val() ) {
+    $("#url").closest(".form-group").addClass("has-error");
+  }
+
+  if( !$("#notifyUrl").val() ) {
+    $("#notifyUrl").closest(".form-group").addClass("has-error");
+  }
+
+
+  if( !$("#cssSelector").val() && !$("#cssSelector").prop('disabled') ) {
+    $("#cssSelector").closest(".form-group").addClass("has-error");
+  }
+
+  debugger;
+  if( !$(".has-error").length ) {
+    var data = {
+      "url": encodeURI($("#url").val()).replace(/#/g, "%23"),
+      "notify_url": encodeURI($("#notifyUrl").val()).replace(/#/g, "%23"),
+    }
+
+    if( $("#cssSelector").val() ) {
+      data.selector = encodeURI($("#cssSelector").val()).replace(/#/g, "%23");
+    } else {
+      data.json = true;
+    }
+
+    debugger;
+    $.ajax(
+      {
+      url: "/new",
+      data: data,
+      method: "GET",
+      success: (a,b,c) => {
+        debugger;
+        window.location = "/htmllist";
+      },
+      error: (a,b,c) => {
+        debugger;
+      },
+    })
+  } else {
+    return false;
+  }
+} );
+
+</script>
+
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel">Modal title</h4>
+      </div>
+      <div class="modal-body">
+        ...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

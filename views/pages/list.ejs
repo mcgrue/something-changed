@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <% include ../partials/header.ejs %>
+</head>
+
+<body>
+
+<% include ../partials/nav.ejs %>
+
+<div class="container">
+<h2>Database Results</h2>
+
+<ul>
+    <% results.forEach(function(r) { %>
+        <li>
+          <a href="/htmledit?url=<%= filter(r.url) %>&selector=<%= filter(r.selector) %>">
+          <%= r.url %> - <%= r.selector %>
+          </a>
+
+          <button
+            class="delclick"
+            data-url="<%= filter(r.url) %>"
+            data-selector="<%= filter(r.selector) %>">DELETE <span class="glyphicon glyphicon-trash"></span></button>
+        </li>
+    <% }); %>
+</ul>
+
+</div>
+
+<script>
+
+$(".delclick").click( (evt) => {
+
+  $('#myModal').modal('show');
+
+  $('#myModal .btn-primary').off('click');
+  $('#myModal .btn-primary').click( () => {
+    var url = $(evt.target).data("url");
+    var selector = $(evt.target).data("selector")
+    url = "//delete?url="+url+"&selector="+selector;
+
+    debugger;
+    $.get(
+      url, {
+      success: () => {
+        window.location = window.location + "?" + new Date().getTime();
+      }
+    });
+  });
+});
+</script>
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel">Modal title</h4>
+      </div>
+      <div class="modal-body">
+        ...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
