@@ -130,6 +130,38 @@ app.get('/check', function (req, resp) {
 });
 
 
+app.get('/checkall', function(req, resp) {
+  client.keys('*', function (err, keys) {
+    if (err) {
+      resp.send(err);
+      return;
+    }
+
+    keys.sort();
+
+    var dict = {};
+    var tmp = [];
+
+    for (var i = keys.length - 1; i >= 0; i-- ) {
+      tmp = keys[i].split(";;;")
+      if( tmp.length > 2 ) {
+        console.log("Bad number of args in split key during work, bad key: " + keys[i]);
+        continue;
+      }
+
+      if( dict[tmp[0]] ) {
+        dict[tmp[0]].push(tmp[1]);
+      } else {
+        dict[tmp[0]] = [tmp[1]];
+      }
+    }
+
+    resp.send("<pre>" + pretty(dict));
+
+  });
+});
+
+
 app.get('/delete', function (req, resp) {
   var q = req.query;
 
