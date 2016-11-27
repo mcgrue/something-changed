@@ -8,8 +8,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "testlocal": "sudo killall node && npm start & node_modules/phantomjs-prebuilt/lib/phantom/bin/phantomjs --web-security=false node_modules/qunit-phantomjs-runner/runner-list.js ./test/fixture.html",
-    "test": "npm start & /usr/local/bin/phantomjs --web-security=false node_modules/qunit-phantomjs-runner/runner-list.js ./test/fixture.html"
+    "testlocal": "npm start & NPM_PID=$1 && node_modules/phantomjs-prebuilt/lib/phantom/bin/phantomjs --web-security=false node_modules/qunit-phantomjs-runner/runner-list.js ./test/fixture.html && kill -9 NPM_PID",
+    "test": "npm start & /usr/local/bin/phantomjs --web-security=false ./test/fixture.html"
   },
   "dependencies": {
     "bluebird": "^3.4.6",
