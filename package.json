@@ -8,7 +8,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "./node_modules/node-qunit-phantomjs/bin/node-qunit-phantomjs ./test/fixture.html"
+    "test": "node_modules/phantomjs-prebuilt/lib/phantom/bin/phantomjs --web-security=false node_modules/qunit-phantomjs-runner/runner-list.js ./test/fixture.html"
   },
   "dependencies": {
     "bluebird": "^3.4.6",
