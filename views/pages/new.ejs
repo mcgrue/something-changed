@@ -89,10 +89,11 @@ $("#submit").click( (e) => {
       data: data,
       method: "GET",
       success: (a,b,c) => {
-        debugger;
+        console.log("Successfully created");
         window.location = "/htmllist";
       },
       error: (a,b,c) => {
+        console.log("Error while creating");
         debugger;
       },
     })
