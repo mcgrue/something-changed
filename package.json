@@ -8,7 +8,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "npm start & node_modules/phantomjs-prebuilt/lib/phantom/bin/phantomjs --web-security=false node_modules/qunit-phantomjs-runner/runner-list.js ./test/fixture.html"
+    "testlocal": "sudo killall node && npm start & node_modules/phantomjs-prebuilt/lib/phantom/bin/phantomjs --web-security=false node_modules/qunit-phantomjs-runner/runner-list.js ./test/fixture.html",
+    "test": "npm start & /usr/local/bin/phantomjs --web-security=false node_modules/qunit-phantomjs-runner/runner-list.js ./test/fixture.html"
   },
   "dependencies": {
     "bluebird": "^3.4.6",
