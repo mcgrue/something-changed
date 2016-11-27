@@ -37,13 +37,11 @@
                 method: method,
                 async: false,
                 success: function(a,b,c) {
-                    debugger;
                     ret.body = a;
                     ret.responseCode = b;
                     ret.response = c;
                 },
                 error: function(a,b,c) {
-                    debugger;
                     ok(false, "ajax fetch failed: " + JSON.stringify(a)+ JSON.stringify(b) );
                 }
             });
@@ -54,6 +52,12 @@
         var is200 = function(res) {
             equal("success", res.responseCode, "success");
             ok(res.body, "body exists");
+            equal(200, res.response.status, "200 code");
+        };
+
+        var isNull200 = function(res) {
+            equal("success", res.responseCode, "success");
+            equal('null', ""+res.body, "body exists as null");
             equal(200, res.response.status, "200 code");
         };
 
@@ -72,38 +76,67 @@
             is200(res);
         });
 
+        var dataIsEmptyCheck = function() {
+            var res = fetch("/check/http://beta.verge-rpg.com;;;.subject");
+            isNull200(res);
 
-        // Let's test this function
-        function isEven(val) {
-            return val % 2 === 0;
-        }
-        test('isEven()', function() {
-            ok(isEven(0), 'Zero is an even number');
-            ok(isEven(2), 'So is two');
-            ok(isEven(-4), 'So is negative four');
-            ok(!isEven(1), 'One is not an even number');
-            ok(!isEven(-7), 'Neither is negative seven');
-        });
-        // Let's test this function
-        function multiply(a, b) {
-            return a * b;
-        }
-        test('multiply()', function() {
-            ok(multiply(0, 1) === 0, 'Zero times one is zero');
-            ok(multiply(2, 2) === 4, 'Two times two is four');
-            ok(multiply(1, 3) === 3, 'One times three is three');
-            ok(multiply(10, 5) === 50, 'Five times ten is fifty');
-            ok(multiply(10, 10) === 100, 'Ten times ten is one hundred');
+            res = fetch("/check?url=http://beta.verge-rpg.com&selector=.subject");
+            isNull200(res);
+
+            res = fetch("/check?url=https://api.github.com/users/mcgrue&selector=JSON");
+            isNull200(res);
+        };
+
+        test('ensure test data is torn down', function() {
+            dataIsEmptyCheck();
         });
 
-        test("should inspect jQuery.getJSON's usage of jQuery.ajax", function () {
-            this.spy(jQuery, "ajax");
-            jQuery.getJSON("http://localhost:5000/");
+        test('add new html entry', function() {
+            var res = fetch("/new?url=http://beta.verge-rpg.com&selector=.subject&notify_url=http://requestb.in/p9psnap9");
+            is200(res);
+            res = fetch("/check/http://beta.verge-rpg.com;;;.subject");
+            is200(res);
 
-            ok(jQuery.ajax.calledOnce);
-            equal(jQuery.ajax.getCall(0).args[0].url, "http://localhost:5000/");
-            equal(jQuery.ajax.getCall(0).args[0].dataType, "json");
+            ok( parseInt(res.body.last_checked_timestamp), "last_checked_timestamp should be a valid number" );
+            ok( parseInt(res.body.last_updated_timestamp), "last_updated_timestamp should be a valid number" );
+            equal( "http://requestb.in/p9psnap9", res.body.notify_url, "notify_url should be as specified" );
+            equal( "HAY GUYS",                    res.body.last_content, "last_content should be as specified" );
+            equal( ".subject",                    res.body.selector, "selector should be as specified" );
+            equal( "http://beta.verge-rpg.com",   res.body.url, "url should be as specified" );
         });
+
+        test('add new json entry', function() {
+            var res = fetch("/new?url=https://api.github.com/users/mcgrue&json=true&notify_url=http://requestb.in/p9psnap9");
+            is200(res);
+            res = fetch("/check/https://api.github.com/users/mcgrue;;;JSON");
+            is200(res);
+
+            ok( parseInt(res.body.last_checked_timestamp), "last_checked_timestamp should be a valid number" );
+            ok( parseInt(res.body.last_updated_timestamp), "last_updated_timestamp should be a valid number" );
+
+            equal( "object",  typeof res.body.last_content, "last_content should be as specified" );
+
+            equal( "Ben McGraw", res.body.last_content.name );
+            equal( "mcgrue",     res.body.last_content.login );
+            equal( undefined,    res.body.selector, "selector should not be defined" );
+            equal( "true",       res.body.json, "json should be 'true'" );
+
+            equal( "https://api.github.com/users/mcgrue", res.body.last_content.url );
+            equal( "https://api.github.com/users/mcgrue", res.body.url, "url should be as specified" );
+            equal( "http://requestb.in/p9psnap9", res.body.notify_url, "notify_url should be as specified" );
+        });
+
+
+        test('tear down test data', function() {
+            var res = fetch("/delete?url=http://beta.verge-rpg.com&selector=.subject");
+            is200(res);
+
+            res = fetch("/delete?url=https://api.github.com/users/mcgrue&selector=JSON");
+            is200(res);
+
+            dataIsEmptyCheck();
+        });
+
 
     </script>
 </body>

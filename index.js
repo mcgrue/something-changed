@@ -110,6 +110,15 @@ var make_key = function(url, selector, json) {
   return "" + url + ";;;" + selector;
 };
 
+var makeRequest = (url) => {
+  return {
+    url: url,
+    headers: {
+      'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36"
+    }
+  };
+};
+
 // http://localhost:5000/new?url=https://twitter.com/bengrue&selector=#stream-items-id > li:nth-child(2) p.js-tweet-text&notify_url=http://requestb.in/p9psnap9
 // http://localhost:5000/new?url=https://twitter.com/bengrue&selector=%23stream-items-id%20%3E%20li:nth-child(2)%20p.js-tweet-text&notify_url=http://requestb.in/p9psnap9
 app.get('/new', function (req, resp) {
@@ -130,48 +139,59 @@ app.get('/new', function (req, resp) {
     return;
   }
 
-  request(q.url, function(error, response, html) {
-    if(!error){
-      var contents = "";
+  try {
+    request(makeRequest(q.url), function(error, response, html) {
+      if(!error){
+        var contents = "";
 
-      if( q.json ) {
-        /// TODO : check mime-type json?
-        contents = JSON.parse(html);
+        if( q.json ) {
+          /// TODO : check mime-type json?
+          contents = JSON.parse(html);
+        } else {
+          var $ = cheerio.load(html);
+          var first = $($(q.selector)[0])
+          contents = first && trim(first.text());
+        }
+
+        if( !contents ) {
+          resp.send("url and selector got a result, but the selector had no contents. Aborting.");
+          return;
+        }
+
+        if( typeof contents == "object" ) {
+          contents = JSON.stringify(contents);
+        }
+
+        var hash = {
+          "url": q.url,
+          "notify_url": q.notify_url,
+          "last_content": contents,
+          "last_checked_timestamp": new Date().getTime(),
+          "last_updated_timestamp": new Date().getTime()
+        };
+
+        if(q.selector) {
+          hash["selector"] = q.selector;
+        }
+        else if(q.json) {
+          hash["json"] = true;
+        }
+
+        // todo: check if that entry already existed maybe?
+
+        console.log()
+
+        client.hmset(make_key(q.url, q.selector, q.json), hash);
+
+        resp.type('json');
+        resp.jsonp(hash);
       } else {
-        var $ = cheerio.load(html);
-        var first = $($(q.selector)[0])
-        contents = first && trim(first.text());
+        res.status(500).send("Something done fucked up.");
       }
-
-      if( !contents ) {
-        resp.send("url and selector got a result, but the selector had no contents. Aborting.");
-        return;
-      }
-
-      var hash = {
-        "url": q.url,
-        "notify_url": q.notify_url,
-        "last_content": contents,
-        "last_checked_timestamp": new Date().getTime(),
-        "last_updated_timestamp": new Date().getTime()
-      };
-
-      if(q.selector) {
-        hash["selector"] = q.selector;
-      }
-      else if(q.json) {
-        hash["json"] = true;
-      }
-
-      // todo: check if that entry already existed maybe?
-
-      client.hmset(make_key(q.url, q.selector, q.json), hash);
-
-      resp.send("Created new thing.<br><pre>" + pretty(hash) + "</pre>");
-    } else {
-      resp.send("Fuck you!");
-    }
-  });
+    });
+  } catch( e ) {
+    res.status(500).send("error during fetch: " + e.message);
+  }
 });
 
 app.get('/list', function (req, resp) {
@@ -230,7 +250,6 @@ app.get('/checkall', function(req, resp) {
 var getKeysFromURL = (fullPath) => {
 
   console.log(fullPath);
-
   var getPosition = (str, m, i) => {
      return str.split(m, i).join(m).length;
   }
@@ -273,6 +292,11 @@ app.get('/check*', function (req, resp) {
     if(err) {
       resp.send("ERROR: " + err);
     } else {
+
+      if( reply && reply.json ) {
+        reply.last_content = JSON.parse(reply.last_content);
+      }
+
       resp.type('json');
       resp.jsonp(reply);
     }
@@ -335,6 +359,10 @@ var _inner_do_website = function(sel, website, results, $, html ) {
       /// UPDATE MEMBER
       cachedObj["last_checked_timestamp"] = new Date().getTime();
       cachedObj["last_updated_timestamp"] = new Date().getTime();
+
+      if( typeof contents == "object" ) {
+        contents = JSON.stringify(contents);
+      }
       cachedObj["last_content"] = contents;
       client.hmset(make_key(website, sel), cachedObj);
 
@@ -353,7 +381,7 @@ var do_website = function( website, selector_list ) {
 
   var results = [];
 
-  request(website, function(error, response, html) {
+  request(makeRequest(website), function(error, response, html) {
     if(!error) {
 
       superlog(website + " successfully fetched.", results);
