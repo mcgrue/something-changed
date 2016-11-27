@@ -1,0 +1,10 @@
+## Customize deployment commands
+# deployment:
+#   staging:
+#     branch: master
+#     heroku:
+#       appname: something-changed
+
+machine:
+  services:
+    - redis
