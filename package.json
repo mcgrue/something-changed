@@ -8,7 +8,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "npm start & /usr/local/bin/phantomjs --web-security=false ./test/runner-list.js ./test/fixture.html"
+    "test": "npm start & sleep 10 && /usr/local/bin/phantomjs --web-security=false ./test/runner-list.js ./test/fixture.html"
   },
   "dependencies": {
     "bluebird": "^3.4.6",
