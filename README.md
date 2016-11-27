@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/mcgrue/something-changed.svg?style=svg)](https://circleci.com/gh/mcgrue/something-changed)
+
 Something Changed!
 ========
 The microest of services; Add a url and a website selector
