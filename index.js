@@ -23,7 +23,7 @@ var pr2 = JSON.stringify;
 // Promise.promisifyAll(redis.RedisClient.prototype);
 // Promise.promisifyAll(redis.Multi.prototype);
 
-app.all('/', function(req, res, next) {
+app.all('*', function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "X-Requested-With");
   next();
@@ -184,24 +184,91 @@ app.get('/list', function (req, resp) {
 
     keys.sort();
 
-    resp.send("<pre>"+pretty(keys)+"</pre>");
+    resp.type('json');
+    resp.jsonp(keys);
   })
 });
 
-app.get('/check', function (req, resp) {
-  var q = req.query;
+app.get('/checkall', function(req, resp) {
+  client.keys('*', function (err, keys) {
+    if (err) {
+      resp.send(err);
+      return;
+    }
 
-  if( !q.url ) {
+    keys.sort();
+
+    var dict = {};
+    var tmp = [];
+
+    for (var i = keys.length - 1; i >= 0; i-- ) {
+      tmp = keys[i].split(";;;")
+      if( tmp.length > 2 ) {
+        console.log("Bad number of args in split key during work, bad key: " + keys[i]);
+        continue;
+      }
+
+      if( dict[tmp[0]] ) {
+        dict[tmp[0]].push(tmp[1]);
+      } else {
+        dict[tmp[0]] = [tmp[1]];
+      }
+    }
+
+    var results = [];
+    tmp = "";
+
+    for( var website in dict ) {
+      tmp = do_website( website, dict[website] );
+      results.push( [website] );
+    }
+
+    resp.send("<pre>" + pretty(results));
+  });
+});
+
+var getKeysFromURL = (fullPath) => {
+
+  console.log(fullPath);
+
+  var getPosition = (str, m, i) => {
+     return str.split(m, i).join(m).length;
+  }
+
+  var pos = getPosition(fullPath, '/', 2);
+  console.log(pos);
+  var particle = fullPath.substring(pos+1, fullPath.length);
+  console.log(particle);
+
+  return particle.split(";;;");
+}
+
+app.get('/check*', function (req, resp) {
+  var q = req.query;
+  var url = q.url || "";
+  var selector = q.selector || "";
+
+  if( !selector && !url ) {
+    var ar = getKeysFromURL(req.path);
+    if( ar.length == 2 ) {
+      url = ar[0];
+      selector = ar[1];
+    }
+
+    console.log(ar)
+  }
+
+  if( !url ) {
     resp.send("Missing required parameters: url");
     return;
   }
 
-  if( !q.selector ) {
+  if( !selector ) {
     resp.send("Missing required parameters: selector");
     return;
   }
 
-  client.hgetall(make_key(q.url, q.selector), function(err, reply) {
+  client.hgetall(make_key(url, selector), function(err, reply) {
 
     if(err) {
       resp.send("ERROR: " + err);
@@ -303,44 +370,6 @@ var do_website = function( website, selector_list ) {
 
   return results;
 };
-
-app.get('/checkall', function(req, resp) {
-  client.keys('*', function (err, keys) {
-    if (err) {
-      resp.send(err);
-      return;
-    }
-
-    keys.sort();
-
-    var dict = {};
-    var tmp = [];
-
-    for (var i = keys.length - 1; i >= 0; i-- ) {
-      tmp = keys[i].split(";;;")
-      if( tmp.length > 2 ) {
-        console.log("Bad number of args in split key during work, bad key: " + keys[i]);
-        continue;
-      }
-
-      if( dict[tmp[0]] ) {
-        dict[tmp[0]].push(tmp[1]);
-      } else {
-        dict[tmp[0]] = [tmp[1]];
-      }
-    }
-
-    var results = [];
-    tmp = "";
-
-    for( var website in dict ) {
-      tmp = do_website( website, dict[website] );
-      results.push( [website] );
-    }
-
-    resp.send("<pre>" + pretty(results));
-  });
-});
 
 
 app.get('/delete', function (req, resp) {

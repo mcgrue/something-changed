@@ -37,11 +37,13 @@
                 method: method,
                 async: false,
                 success: function(a,b,c) {
+                    debugger;
                     ret.body = a;
                     ret.responseCode = b;
                     ret.response = c;
                 },
                 error: function(a,b,c) {
+                    debugger;
                     ok(false, "ajax fetch failed: " + JSON.stringify(a)+ JSON.stringify(b) );
                 }
             });
@@ -50,15 +52,26 @@
         }
 
         var is200 = function(res) {
-            equal(res.responseCode, "success");
-            ok(res.body);
-            equal(res.response.status, 200);
+            equal("success", res.responseCode, "success");
+            ok(res.body, "body exists");
+            equal(200, res.response.status, "200 code");
         };
+
+        test('/htmllist 200s', function() {
+            var res = fetch("/htmllist");
+            is200(res);
+        });
 
         test('index 200s', function() {
             var res = fetch("/");
             is200(res);
         });
+
+        test('/htmlnew 200s', function() {
+            var res = fetch("/htmlnew");
+            is200(res);
+        });
+
 
         // Let's test this function
         function isEven(val) {
