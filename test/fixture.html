@@ -22,6 +22,44 @@
     <div id="qunit-fixture"></div>
 
     <script>
+
+        var fetch = function(_url, _data, _method) {
+
+            var data = _data || {};
+            var method = _method || "GET";
+            var url = "http://localhost:5000" + _url;
+
+            var ret = {};
+
+            $.ajax({
+                url: url,
+                data: data,
+                method: method,
+                async: false,
+                success: function(a,b,c) {
+                    ret.body = a;
+                    ret.responseCode = b;
+                    ret.response = c;
+                },
+                error: function(a,b,c) {
+                    ok(false, "ajax fetch failed: " + JSON.stringify(a)+ JSON.stringify(b) );
+                }
+            });
+
+            return ret;
+        }
+
+        var is200 = function(res) {
+            equal(res.responseCode, "success");
+            ok(res.body);
+            equal(res.response.status, 200);
+        };
+
+        test('index 200s', function() {
+            var res = fetch("/");
+            is200(res);
+        });
+
         // Let's test this function
         function isEven(val) {
             return val % 2 === 0;
@@ -47,10 +85,10 @@
 
         test("should inspect jQuery.getJSON's usage of jQuery.ajax", function () {
             this.spy(jQuery, "ajax");
-            jQuery.getJSON("/some/resource");
+            jQuery.getJSON("http://localhost:5000/");
 
             ok(jQuery.ajax.calledOnce);
-            equal(jQuery.ajax.getCall(0).args[0].url, "/some/resource");
+            equal(jQuery.ajax.getCall(0).args[0].url, "http://localhost:5000/");
             equal(jQuery.ajax.getCall(0).args[0].dataType, "json");
         });
 
