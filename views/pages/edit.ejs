@@ -87,9 +87,8 @@
       newDate.setTime(data.last_checked_timestamp);
       dateString = newDate.toUTCString();
 
-      debugger;
       if( typeof data.last_content == "object" ) {
-        JSON.stringify(data.last_content);
+        data.last_content = JSON.stringify(data.last_content);
       }
 
       $("#lastResponse").text(data.last_content);

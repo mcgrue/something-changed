@@ -7,8 +7,10 @@
     <link rel="stylesheet" href="../node_modules/qunitjs/qunit/qunit.css" type="text/css" media="screen">
     <script type="text/javascript" src="../node_modules/qunitjs/qunit/qunit.js"></script>
 
-    <script type="text/javascript" src="sinon-1.17.6.js"></script>
-    <script type="text/javascript" src="sinon-qunit-1.0.0.js"></script>
+    <!--
+        <script type="text/javascript" src="sinon-1.17.6.js"></script>
+        <script type="text/javascript" src="sinon-qunit-1.0.0.js"></script>
+    -->
 
 
 
@@ -18,6 +20,8 @@
     <!-- <script type="text/javascript" src="myTests.js"></script>   -->
 </head>
 <body>
+    <iframe id="iframe-fixture"></iframe>
+
     <div id="qunit"></div>
     <div id="qunit-fixture"></div>
 
@@ -126,6 +130,23 @@
             equal( "http://requestb.in/p9psnap9", res.body.notify_url, "notify_url should be as specified" );
         });
 
+        test('htmledit page doesnt show [object Object] for json responses.', function(assert) {
+            var done = assert.async();
+
+            $("#iframe-fixture").attr('src', "http://localhost:5000/htmledit?url=https://api.github.com/users/mcgrue&selector=JSON");
+
+            setTimeout(function() {
+                // do something once the iframe is loaded
+
+                var contents = $("#iframe-fixture").contents();
+                var $doc = $(contents[0].childNodes[1]);
+
+                equal(-1, $doc.find("#lastResponse").text().indexOf("[object Object]"),
+                    "Shouldnt see any string literals of [object Object].");
+
+                done();
+            }, 2000);
+        });
 
         test('tear down test data', function() {
             var res = fetch("/delete?url=http://beta.verge-rpg.com&selector=.subject");
