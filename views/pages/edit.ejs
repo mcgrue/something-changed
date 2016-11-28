@@ -106,6 +106,10 @@
       $("#notifyUrl").val(data.notify_url);
 
       $("#isJSON").prop('checked', data.json);
+      if( data.json ) {
+        $("#cssSelector").attr("disabled", "true")
+      }
+
     },
     error: (a,b,c) => {
       alert("Error fetching data.  Womp womp.");
